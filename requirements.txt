@@ -1,7 +1,27 @@
-streamlit>=1.38
-groq>=0.11.0
+# API and Web Frameworks
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+streamlit>=1.31.0
+
+# LLM and Orchestration
+langgraph>=0.2.0
+langchain-core>=0.2.0
+langchain-groq>=0.1.0
+groq>=0.4.2
+
+# Data Validation and Modeling
+pydantic>=2.6.0
+pydantic-settings>=2.1.0
+
+# Utils and Networking
+httpx>=0.26.0
 python-dotenv>=1.0.1
-pydantic>=2.7
-pytz>=2024.1
-markdownify>=0.13.1
-reportlab>=4.2.2
+tenacity>=8.2.0
+
+# Browser Automation (optional)
+playwright>=1.41.0
+
+# Export
+markdown2>=2.4.0
+markdownify>=0.11.6
+reportlab>=4.0.0
