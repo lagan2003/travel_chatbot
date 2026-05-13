@@ -17,7 +17,22 @@ def html(markup: str) -> None:
     4+-space-indented HTML as a code block."""
     st.markdown(textwrap.dedent(markup).strip(), unsafe_allow_html=True)
 
-BACKEND = os.getenv("BACKEND_URL") or f"http://{os.getenv('BACKEND_HOST', '127.0.0.1')}:{os.getenv('BACKEND_PORT', '8000')}"
+def _resolve_backend() -> str:
+    # 1. Explicit BACKEND_URL wins (used by Streamlit Cloud secrets / Render).
+    raw = os.getenv("BACKEND_URL")
+    if not raw:
+        # 2. Streamlit Cloud `st.secrets` (only available when running on Streamlit Cloud).
+        try:
+            raw = st.secrets.get("BACKEND_URL")  # type: ignore[attr-defined]
+        except Exception:
+            raw = None
+    if not raw:
+        # 3. Local default — backend on the same host.
+        raw = f"http://{os.getenv('BACKEND_HOST', '127.0.0.1')}:{os.getenv('BACKEND_PORT', '8000')}"
+    return raw.rstrip("/")
+
+
+BACKEND = _resolve_backend()
 
 
 def stars(rating: float) -> str:

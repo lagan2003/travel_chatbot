@@ -160,6 +160,24 @@ def _hotel_to_option(h) -> HotelOption:
 
 # ─── Health + Status ───
 
+@app.get("/")
+async def root():
+    """Friendly landing JSON so the bare domain doesn't return 404."""
+    return {
+        "name": "Agentic AI Travel Planner",
+        "version": app.version,
+        "docs": "/docs",
+        "health": "/health",
+        "status": "/status",
+        "endpoints": [
+            "POST /plan", "POST /select", "POST /filter",
+            "POST /flights/search", "POST /hotels/search",
+            "POST /chat/stream",
+            "GET/POST /trips", "GET/DELETE /trips/{id}",
+        ],
+    }
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
