@@ -21,7 +21,7 @@ def get_llm() -> ChatGroq:
         logger.warning("GROQ_API_KEY not found in environment variables. Calls will fail.")
 
     return ChatGroq(
-        model="llama-3.3-70b-versatile",
+        model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
         api_key=api_key,
         temperature=0.2,
         max_retries=2,
@@ -30,15 +30,52 @@ def get_llm() -> ChatGroq:
 
 def generate_structured_data(prompt: str, schema: Type[Any]) -> Any:
     """
-    Utility: generate structured output matching a Pydantic schema.
-    Uses with_structured_output (tool-calling under the hood).
-    Returns None on failure so callers can fall back gracefully.
+    Generate structured output matching a Pydantic schema.
+
+    Two-tier strategy:
+      1. with_structured_output (tool-calling).
+      2. If that fails (Groq sometimes rejects complex nested schemas), fall
+         back to plain text generation + manual JSON parse.
+
+    Returns None if both attempts fail so callers can fall back further.
     """
+    import json
+    import re
+
     llm = get_llm()
-    structured_llm = llm.with_structured_output(schema)
+
+    # Attempt 1 — structured output via tool calling
     try:
-        response = structured_llm.invoke(prompt)
-        return response
+        structured_llm = llm.with_structured_output(schema)
+        return structured_llm.invoke(prompt)
     except Exception as e:
-        logger.error(f"Error generating structured data: {e}")
-        return None
+        logger.warning(
+            f"with_structured_output failed for {schema.__name__}: "
+            f"{type(e).__name__}: {str(e)[:300]}"
+        )
+
+    # Attempt 2 — plain text JSON parsing
+    try:
+        json_schema = schema.model_json_schema()
+        fallback_prompt = (
+            prompt
+            + "\n\nReturn ONLY a single JSON object matching this schema (no markdown, no prose):\n"
+            + json.dumps(json_schema, indent=2)
+        )
+        resp = llm.invoke(fallback_prompt)
+        text = (resp.content or "").strip()
+        # Strip optional ```json fences
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+        # Find the outermost JSON object
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if m:
+            data = json.loads(m.group(0))
+            return schema(**data)
+    except Exception as e:
+        logger.warning(
+            f"JSON-fallback also failed for {schema.__name__}: "
+            f"{type(e).__name__}: {str(e)[:300]}"
+        )
+
+    return None

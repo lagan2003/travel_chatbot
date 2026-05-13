@@ -151,11 +151,21 @@ def _build_deterministic_markdown(itinerary: FullItinerary, errors: list[str]) -
 def formatter_agent(state: AgentState) -> dict:
     """Format the itinerary into a polished Markdown document — never JSON."""
     itinerary = state.get("itinerary")
-    errors = state.get("validation_errors", [])
+    raw_errors = state.get("validation_errors", []) or []
     recommendations = state.get("recommendations", [])
 
     if not itinerary:
         return {"markdown_output": "❌ Failed to generate itinerary."}
+
+    # Dedupe validation errors — the agentic loop can accumulate the same
+    # message multiple times via operator.add on the state list.
+    errors: list[str] = []
+    seen: set[str] = set()
+    for e in raw_errors:
+        e_clean = (e or "").strip()
+        if e_clean and e_clean not in seen:
+            seen.add(e_clean)
+            errors.append(e_clean)
 
     # Attach recommendations before serialising
     itinerary.recommendations = recommendations

@@ -93,12 +93,16 @@ def critic_agent(state: AgentState) -> dict:
         f"loop_count={new_loop}/{MAX_LOOPS}"
     )
 
+    # Only surface NEW issues into validation_errors (the state list uses
+    # operator.add concatenation, so we'd otherwise duplicate every loop).
+    existing = set((e or "").strip() for e in errors)
+    new_issues = [i for i in verdict.issues if i.strip() not in existing]
+
     return {
         "critic_verdict": verdict.verdict,
         "loop_count": new_loop,
         "revision_hint": verdict.revision_hint,
-        # Surface critic issues into the same channel as validation errors.
-        "validation_errors": verdict.issues,
+        "validation_errors": new_issues,
     }
 
 
